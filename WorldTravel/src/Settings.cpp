@@ -1,4 +1,5 @@
 #include "Settings.h"
+#include <stdio.h>
 
 bool Settings::EnableLogging = true;
 bool Settings::FastTravel = true;
@@ -7,6 +8,8 @@ bool Settings::EnableCayoPerico = true;
 bool Settings::EnableNorthYankton = true;
 bool Settings::EnableLibertyCityLODLights = true;
 bool Settings::EnableLCOnStartup = true;
+bool Settings::RememberMap = false;
+int Settings::LastLocation = 0;
 
 void Settings::Load()
 {
@@ -20,6 +23,8 @@ void Settings::Load()
     EnableNorthYankton = LoadBoolSetting("WorldTravel", "EnableNorthYankton", true, iniFilePath);
 	EnableLibertyCityLODLights = LoadBoolSetting("WorldTravel", "EnableLibertyCityLODLights", true, iniFilePath);
 	EnableLCOnStartup = LoadBoolSetting("WorldTravel", "EnableLCOnStartup", false, iniFilePath);
+    RememberMap = LoadBoolSetting("WorldTravel", "RememberMap", false, iniFilePath);
+    LastLocation = LoadIntSetting("WorldTravel", "LastLocation", 0, iniFilePath);
 }
 
 // Settings helper functions
@@ -32,4 +37,9 @@ bool Settings::LoadBoolSetting(const char* section, const char* key, bool defaul
 int Settings::LoadIntSetting(const char* section, const char* key, int defaultValue, const char* iniFilePath)
 {
     return GetPrivateProfileInt(section, key, defaultValue, iniFilePath);
+}
+
+void Settings::SaveSetting(const char* section, const char* key, const char* value, const char* iniFilePath)
+{
+    WritePrivateProfileString(section, key, value, iniFilePath);
 }

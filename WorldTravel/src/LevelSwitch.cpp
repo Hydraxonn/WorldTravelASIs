@@ -145,6 +145,9 @@ namespace levelSwitch
 	bool flyToCPBlipVisible = false;
 	bool airportBlipFarDist = false;
 
+	//inifile path for settings saving
+	char iniFilePath[MAX_PATH];
+
 	// Marker Cords
 	std::vector<float> LibertyCityOffsetPos =		{ 5188.185f, -3256.298f, 0.0f };
 	std::vector<float> LosSantosIntAirport =		{ -1050.53f, -2741.48f, 14.60f };
@@ -1084,6 +1087,7 @@ namespace levelSwitch
 		worldtravel::PathNodeState::SetPathNodeState(2);
 		STREAMING::LOAD_GLOBAL_WATER_FILE(1);
 		SetBlipsLocation(3);
+		Settings::SaveSetting("WorldTravel", "LastLocation", "3", iniFilePath);
 	}
 
 	// Load Liberty City
@@ -1117,6 +1121,7 @@ namespace levelSwitch
 		GRAPHICS::DISABLE_VEHICLE_DISTANTLIGHTS(true);
 		STREAMING::LOAD_GLOBAL_WATER_FILE(2);
 		SetBlipsLocation(1);
+		Settings::SaveSetting("WorldTravel", "LastLocation", "1", iniFilePath);
 	}
 
 	// Load Los Santos
@@ -1142,6 +1147,7 @@ namespace levelSwitch
 		GRAPHICS::DISABLE_VEHICLE_DISTANTLIGHTS(false);
 		STREAMING::LOAD_GLOBAL_WATER_FILE(0);
 		SetBlipsLocation(0);
+		Settings::SaveSetting("WorldTravel", "LastLocation", 0, iniFilePath);
 		STREAMING::_SET_MAPDATACULLBOX_ENABLED((char*)"HeistIsland", false);
 
 		// if in singleplayer
@@ -1201,6 +1207,7 @@ namespace levelSwitch
 		GAMEPLAY::SET_OVERRIDE_WEATHER(const_cast<char*>(yanktonWeatherTypes[weatherID].c_str()));
 		worldtravel::PathNodeState::SetPathNodeState(1);
 		SetBlipsLocation(2);
+		Settings::SaveSetting("WorldTravel", "LastLocation", "2", iniFilePath);
 	}
 
 	/////////////////////////////////////////////////////////
@@ -2410,13 +2417,22 @@ namespace levelSwitch
 		static bool hasRunOnStartup = false; // Static variable to ensure this runs only once
 		if (Settings::EnableLCOnStartup && !hasRunOnStartup)
 		{
-			hasRunOnStartup = true;
-			if (worldtravel::IsLosSantos())
-			{
-				SwitchMap(0, 1);
-				playerPed = PLAYER::PLAYER_PED_ID();
-				bPlayerExists = ENTITY::DOES_ENTITY_EXIST(playerPed);
-				ENTITY::SET_ENTITY_COORDS(playerPed, 5022.0f, -2644.89f, 15.55f, 1, 0, 0, 1);
+				hasRunOnStartup = true;
+				if (worldtravel::IsLosSantos())
+				{
+					SwitchMap(0, 1);
+					playerPed = PLAYER::PLAYER_PED_ID();
+					bPlayerExists = ENTITY::DOES_ENTITY_EXIST(playerPed);
+					ENTITY::SET_ENTITY_COORDS(playerPed, 5022.0f, -2644.89f, 15.55f, 1, 0, 0, 1);
+				}
+		}
+		static bool hasLoadedRememberedMap = false;//good idea
+		if (Settings::RememberMap && !hasLoadedRememberedMap)
+		{
+			if (worldtravel::GetPlayerLocationID() != Settings::LastLocation) {
+				hasLoadedRememberedMap = true;
+				WAIT(7000);
+				SwitchMap(worldtravel::GetPlayerLocationID(), Settings::LastLocation);//load whatever the last area was according to config
 			}
 		}
 	}
