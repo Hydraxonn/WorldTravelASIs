@@ -7,7 +7,7 @@ int Settings::TeleportKey = VK_F11;
 bool Settings::EnableCayoPerico = true;
 bool Settings::EnableNorthYankton = true;
 bool Settings::EnableLibertyCityLODLights = true;
-bool Settings::EnableLCOnStartup = true;
+bool Settings::IHaveAPersistenceMod = false;
 bool Settings::RememberMap = false;
 int Settings::LastLocation = 0;
 
@@ -22,7 +22,7 @@ void Settings::Load()
     EnableCayoPerico = LoadBoolSetting("WorldTravel", "EnableCayoPerico", true, iniFilePath);
     EnableNorthYankton = LoadBoolSetting("WorldTravel", "EnableNorthYankton", true, iniFilePath);
 	EnableLibertyCityLODLights = LoadBoolSetting("WorldTravel", "EnableLibertyCityLODLights", true, iniFilePath);
-	EnableLCOnStartup = LoadBoolSetting("WorldTravel", "EnableLCOnStartup", false, iniFilePath);
+    IHaveAPersistenceMod = LoadBoolSetting("WorldTravel", "IHaveAPersistenceMod", false, iniFilePath);//useful for skipping things like location and weather setting on load
     RememberMap = LoadBoolSetting("WorldTravel", "RememberMap", false, iniFilePath);
     LastLocation = LoadIntSetting("WorldTravel", "LastLocation", 0, iniFilePath);
 }

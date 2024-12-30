@@ -145,9 +145,7 @@ namespace levelSwitch
 	bool flyToCPBlipVisible = false;
 	bool airportBlipFarDist = false;
 
-	//inifile path for settings saving
-	char iniFilePath[MAX_PATH];
-
+	
 	// Marker Cords
 	std::vector<float> LibertyCityOffsetPos =		{ 5188.185f, -3256.298f, 0.0f };
 	std::vector<float> LosSantosIntAirport =		{ -1050.53f, -2741.48f, 14.60f };
@@ -195,6 +193,7 @@ namespace levelSwitch
 	std::vector<float> dlc_int_01_xm3 =			{ 485.0f, -2625.0f, -50.0f };
 	bool tempWaterSwapActive = false;
 	bool hasCayoLoadedExternally = false;
+	static bool hasLoadedRememberedMap = false;//ensure the startup function only runs once
 
 	void readFileToVector(const std::string& filePath, std::vector<std::string>& targetVector) {
 		std::ifstream file(filePath);
@@ -1081,12 +1080,18 @@ namespace levelSwitch
 		int weatherID = std::rand() % weatherTypes.size();
 		if (!NETWORK::NETWORK_IS_IN_SESSION())
 		{
-			GAMEPLAY::SET_WEATHER_TYPE_NOW(const_cast<char*>(weatherTypes[weatherID].c_str()));
+			if (hasLoadedRememberedMap && !Settings::IHaveAPersistenceMod)//ensure weather is not set on startup if the player has a persistence mod 
+			{
+				GAMEPLAY::SET_WEATHER_TYPE_NOW(const_cast<char*>(weatherTypes[weatherID].c_str()));
+			}
 		}
 
 		worldtravel::PathNodeState::SetPathNodeState(2);
 		STREAMING::LOAD_GLOBAL_WATER_FILE(1);
 		SetBlipsLocation(3);
+		//inifile path for settings saving
+		char iniFilePath[MAX_PATH];
+		GetFullPathName("WorldTravel.ini", MAX_PATH, iniFilePath, nullptr);
 		Settings::SaveSetting("WorldTravel", "LastLocation", "3", iniFilePath);
 	}
 
@@ -1114,13 +1119,19 @@ namespace levelSwitch
 		int weatherID = std::rand() % weatherTypes.size();
 		if (!NETWORK::NETWORK_IS_IN_SESSION())
 		{
-			GAMEPLAY::SET_WEATHER_TYPE_NOW(const_cast<char*>(weatherTypes[weatherID].c_str()));
+			if (hasLoadedRememberedMap && !Settings::IHaveAPersistenceMod)//ensure weather is not set on startup if the player has a persistence mod 
+			{ 
+				GAMEPLAY::SET_WEATHER_TYPE_NOW(const_cast<char*>(weatherTypes[weatherID].c_str()));
+			}
 		}
 		
 		worldtravel::PathNodeState::SetPathNodeState(1);
 		GRAPHICS::DISABLE_VEHICLE_DISTANTLIGHTS(true);
 		STREAMING::LOAD_GLOBAL_WATER_FILE(2);
 		SetBlipsLocation(1);
+		//inifile path for settings saving
+		char iniFilePath[MAX_PATH];
+		GetFullPathName("WorldTravel.ini", MAX_PATH, iniFilePath, nullptr);
 		Settings::SaveSetting("WorldTravel", "LastLocation", "1", iniFilePath);
 	}
 
@@ -1147,6 +1158,9 @@ namespace levelSwitch
 		GRAPHICS::DISABLE_VEHICLE_DISTANTLIGHTS(false);
 		STREAMING::LOAD_GLOBAL_WATER_FILE(0);
 		SetBlipsLocation(0);
+		//inifile path for settings saving
+		char iniFilePath[MAX_PATH];
+		GetFullPathName("WorldTravel.ini", MAX_PATH, iniFilePath, nullptr);
 		Settings::SaveSetting("WorldTravel", "LastLocation", 0, iniFilePath);
 		STREAMING::_SET_MAPDATACULLBOX_ENABLED((char*)"HeistIsland", false);
 
@@ -1168,7 +1182,10 @@ namespace levelSwitch
 		// if in multiplayer
 		if (!NETWORK::NETWORK_IS_IN_SESSION())
 		{
-			GAMEPLAY::SET_WEATHER_TYPE_NOW(const_cast<char*>(weatherTypes[weatherID].c_str()));
+			if (hasLoadedRememberedMap && !Settings::IHaveAPersistenceMod)//ensure weather is not set on startup if the player has a persistence mod 
+			{
+				GAMEPLAY::SET_WEATHER_TYPE_NOW(const_cast<char*>(weatherTypes[weatherID].c_str()));
+			}
 		}
 
 		if (!NETWORK::NETWORK_IS_IN_SESSION())
@@ -1198,7 +1215,10 @@ namespace levelSwitch
 		}
 		else
 		{
-			GAMEPLAY::SET_WEATHER_TYPE_PERSIST(const_cast<char*>(yanktonWeatherTypes[weatherID].c_str()));
+			if (hasLoadedRememberedMap && !Settings::IHaveAPersistenceMod)//ensure weather is not set on startup if the player has a persistence mod 
+			{
+				GAMEPLAY::SET_WEATHER_TYPE_PERSIST(const_cast<char*>(yanktonWeatherTypes[weatherID].c_str()));
+			}
 		}
 		PATHFIND::SET_ROADS_IN_ANGLED_AREA(5526.24f, -5137.23f, 61.78925f, 3679.327f, -4973.879f, 125.0828f, 192, false, true, true);
 		PATHFIND::SET_ROADS_IN_ANGLED_AREA(3691.211f, -4941.24f, 94.59368f, 3511.115f, -4869.191f, 126.7621f, 16, false, true, true);
@@ -1207,6 +1227,9 @@ namespace levelSwitch
 		GAMEPLAY::SET_OVERRIDE_WEATHER(const_cast<char*>(yanktonWeatherTypes[weatherID].c_str()));
 		worldtravel::PathNodeState::SetPathNodeState(1);
 		SetBlipsLocation(2);
+		//inifile path for settings saving
+		char iniFilePath[MAX_PATH];
+		GetFullPathName("WorldTravel.ini", MAX_PATH, iniFilePath, nullptr);
 		Settings::SaveSetting("WorldTravel", "LastLocation", "2", iniFilePath);
 	}
 
@@ -2414,25 +2437,27 @@ namespace levelSwitch
 		NpcSpawnBlocker();
 		KeepLosSantosIplsDisabled();
 		CreateBlips();
-		static bool hasRunOnStartup = false; // Static variable to ensure this runs only once
-		if (Settings::EnableLCOnStartup && !hasRunOnStartup)
-		{
-				hasRunOnStartup = true;
-				if (worldtravel::IsLosSantos())
-				{
-					SwitchMap(0, 1);
-					playerPed = PLAYER::PLAYER_PED_ID();
-					bPlayerExists = ENTITY::DOES_ENTITY_EXIST(playerPed);
-					ENTITY::SET_ENTITY_COORDS(playerPed, 5022.0f, -2644.89f, 15.55f, 1, 0, 0, 1);
-				}
-		}
-		static bool hasLoadedRememberedMap = false;//good idea
+		
 		if (Settings::RememberMap && !hasLoadedRememberedMap)
 		{
 			if (worldtravel::GetPlayerLocationID() != Settings::LastLocation) {
-				hasLoadedRememberedMap = true;
-				WAIT(7000);
+				WAIT(8000);//if this delay isnt here, the game wont load
 				SwitchMap(worldtravel::GetPlayerLocationID(), Settings::LastLocation);//load whatever the last area was according to config
+				if (!Settings::IHaveAPersistenceMod) {//teleport the player to the relevant map if they dont have a mod that remembers location
+					if (Settings::LastLocation == 1)
+					{
+						TeleportPlayer(player, 4976.62f, -2914.04f, 16.48f, 0.0f);
+					}
+					if (Settings::LastLocation == 2)
+					{
+						TeleportPlayer(player, 3359.87f, -4849.52f, 111.67f, 0.0f);
+					}
+					if (Settings::LastLocation == 3)
+					{
+						TeleportPlayer(player, 4906.26f, -4912.76f, 3.36f, 0.0f);
+					}
+				}
+				hasLoadedRememberedMap = true;
 			}
 		}
 	}

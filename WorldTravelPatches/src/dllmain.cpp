@@ -50,8 +50,8 @@ DWORD WINAPI Main()
 	PopZones::UpdateCurrentZoneFromCoords2Patch();
 	spdlog::info("Patched PopZone / PopCycle.");
 
-	RockstarEditor::Patch();
-	spdlog::info("Patched Rockstar Editor.");
+	//RockstarEditor::Patch();
+	//spdlog::info("Patched Rockstar Editor.");
 	//CWeaponInfo::PatchWeapons();
 	//spdlog::info("Patched Weapon Limits.");
 	patches::water::Init();
