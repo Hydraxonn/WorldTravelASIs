@@ -194,6 +194,7 @@ namespace levelSwitch
 	bool tempWaterSwapActive = false;
 	bool hasCayoLoadedExternally = false;
 	static bool hasLoadedRememberedMap = false;//ensure the startup function only runs once
+	static bool hasLoadFunctionStarted = false;
 
 	void readFileToVector(const std::string& filePath, std::vector<std::string>& targetVector) {
 		std::ifstream file(filePath);
@@ -865,10 +866,13 @@ namespace levelSwitch
 		//block traffic and peds around Los Santos if it is not loaded
 		if (!STREAMING::IS_IPL_ACTIVE("cs5_lod"))
 		{
-			if (!ENTITY::IS_ENTITY_IN_AREA(playerPed, 2600.0f, -6600.0f, -10000.0f, 8300.0f, -2500.0f, 10000.0f, false, false, false) &&
-				!ENTITY::IS_ENTITY_IN_AREA(playerPed, 3000.0f, -2500.0f, -10000.0f, 8300.0f, -1700.0f, 10000.0f, false, false, false) &&
-				!ENTITY::IS_ENTITY_IN_AREA(playerPed, 3400.0f, -1700.0f, -10000.0f, 8300.0f, -900.0f, 10000.0f, false, false, false))
-			{
+			if (!ENTITY::IS_ENTITY_IN_AREA(playerPed, 2600.0f, -6600.0f, -10000.0f, 8300.0f, -2500.0f, 10000.0f, false, false, false) && // LC area
+				!ENTITY::IS_ENTITY_IN_AREA(playerPed, 3000.0f, -2500.0f, -10000.0f, 8300.0f, -1700.0f, 10000.0f, false, false, false) && // upper LC area
+				!ENTITY::IS_ENTITY_IN_AREA(playerPed, 3400.0f, -1700.0f, -10000.0f, 8300.0f, -900.0f, 10000.0f, false, false, false) && // upper upper LC area
+				!ENTITY::IS_ENTITY_IN_AREA(playerPed, 4891.0f, 5291.0f, -10000.0f, 8897.0f, 9639.0f, 10000.0f, false, false, false) && // LC3 area
+				!ENTITY::IS_ENTITY_IN_AREA(playerPed, -5496.0f, -4535.0f, -10000.0f, -2512.0f, -669.0f, 10000.0f, false, false, false)) // VC area
+
+			{ //if LS is not loaded, and player is not in the Liberty City, LC3 or VC Areas
 				//worldtravel::HelpText::DisplayHelpText("NPCs blocked in this area when Los Santos is disabled.");
 				VEHICLE::SET_VEHICLE_DENSITY_MULTIPLIER_THIS_FRAME(0.0f);
 				VEHICLE::SET_RANDOM_VEHICLE_DENSITY_MULTIPLIER_THIS_FRAME(0.0f);
@@ -906,6 +910,37 @@ namespace levelSwitch
 				VEHICLE::SET_PARKED_VEHICLE_DENSITY_MULTIPLIER_THIS_FRAME(0.0f);
 				PED::SET_PED_DENSITY_MULTIPLIER_THIS_FRAME(0.0f);
 				PED::SET_SCENARIO_PED_DENSITY_MULTIPLIER_THIS_FRAME(0.0f, 0.0f);
+			}
+		}
+		//block traffic and peds around Vice City if it's not loaded
+		if (!STREAMING::IS_IPL_ACTIVE("downtows_lod"))
+		{
+			if (ENTITY::IS_ENTITY_IN_AREA(playerPed, -5496.0f, -4535.0f, -10000.0f, -2512.0f, -669.0f, 10000.0f, false, false, false)) // player is in vice city, but its unloaded
+			{
+				//worldtravel::HelpText::DisplayHelpText("NPCs blocked in this area when Vice City is disabled.");
+				VEHICLE::SET_VEHICLE_DENSITY_MULTIPLIER_THIS_FRAME(0.0f);
+				VEHICLE::SET_RANDOM_VEHICLE_DENSITY_MULTIPLIER_THIS_FRAME(0.0f);
+				VEHICLE::SET_PARKED_VEHICLE_DENSITY_MULTIPLIER_THIS_FRAME(0.0f);
+				PED::SET_PED_DENSITY_MULTIPLIER_THIS_FRAME(0.0f);
+				PED::SET_SCENARIO_PED_DENSITY_MULTIPLIER_THIS_FRAME(0.0f, 0.0f);
+			}
+		}
+		else //vice city IS active, modify PathNodeState based on if player is in VC area
+		{
+			if (ENTITY::IS_ENTITY_IN_AREA(playerPed, -5496.0f, -4535.0f, -10000.0f, -2512.0f, -669.0f, 10000.0f, false, false, false))//if player is in Vice City territory
+			{
+				if (worldtravel::PathNodeState::GetPathNodeState() == 2) // if path nodes are set to cayo perico
+				{
+					worldtravel::PathNodeState::SetPathNodeState(0);//re enable default path nodes
+				}
+				
+			}
+			else //player is NOT in vice city terrirory
+			{
+				if (worldtravel::PathNodeState::GetPathNodeState() == 0) // if path nodes are set to default
+				{
+					worldtravel::PathNodeState::SetPathNodeState(2);//re enable cayo perico path nodes
+				}
 			}
 		}
 	}
@@ -1086,7 +1121,8 @@ namespace levelSwitch
 			}
 		}
 
-		worldtravel::PathNodeState::SetPathNodeState(2);
+		worldtravel::PathNodeState::SetPathNodeState(2);//enable CP traffic paths, which disables base paths, including VC
+
 		STREAMING::LOAD_GLOBAL_WATER_FILE(1);
 		SetBlipsLocation(3);
 		//inifile path for settings saving
@@ -1705,8 +1741,8 @@ namespace levelSwitch
 			{
 				if (PLAYER::GET_PLAYER_WANTED_LEVEL(playerPed) == 0)
 				{
-					worldtravel::HelpText::DisplayHelpText("Press ~INPUT_CONTEXT~ to fly to Liberty City or ~INPUT_CONTEXT_SECONDARY~ to North Yankton for $350.");
-					if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52))
+					worldtravel::HelpText::DisplayHelpText("Press ~INPUT_CONTEXT~ to fly to LC, ~INPUT_CONTEXT_SECONDARY~ to NY or ~INPUT_JUMP~ to VC for $350.");
+					if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 22))
 					{
 						int destination = 0;
 						if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51))
@@ -1716,6 +1752,10 @@ namespace levelSwitch
 						else if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52))
 						{
 							destination = 2;
+						}
+						else if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 22))
+						{
+							destination = 3;
 						}
 						CAM::DO_SCREEN_FADE_OUT(800);
 						WAIT(800);
@@ -1741,6 +1781,8 @@ namespace levelSwitch
 							loadLiberty();
 						else if (destination == 2)
 							loadYankton();
+						else if (destination == 3)
+							loadCayo();
 						CUTSCENE::REMOVE_CUTSCENE();
 						CAM::DO_SCREEN_FADE_OUT(0);
 						unloadSantos();
@@ -1765,14 +1807,21 @@ namespace levelSwitch
 							AI::TASK_WARP_PED_INTO_VEHICLE(playerPed, yanktonVehicle, -1);
 							STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(yanktonVehicleHash);
 						}
+						else if (destination == 3)
+						{
+							ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, -4859, -3433, 14.85, 0, 0, 1);
+							ENTITY::SET_ENTITY_HEADING(playerPed, 22.8f);
+						}
 						CAM::SET_GAMEPLAY_CAM_RELATIVE_HEADING(0.0f);
 						CAM::SET_GAMEPLAY_CAM_RELATIVE_PITCH(0.0f, 0.0f);
 						if (!NETWORK::NETWORK_IS_IN_SESSION())
 						{
 							if (destination == 1)
-								TIME::ADD_TO_CLOCK_TIME(13, 0, 0);
+								TIME::ADD_TO_CLOCK_TIME(6, 0, 0);
 							else if (destination == 2)
-								TIME::ADD_TO_CLOCK_TIME(12, 0, 0);
+								TIME::ADD_TO_CLOCK_TIME(6, 0, 0);
+							else if (destination == 3)
+								TIME::ADD_TO_CLOCK_TIME(4, 0, 0);
 						}
 						else
 						{
@@ -1826,8 +1875,8 @@ namespace levelSwitch
 			{
 				if (PLAYER::GET_PLAYER_WANTED_LEVEL(playerPed) == 0)
 				{
-					worldtravel::HelpText::DisplayHelpText("Press ~INPUT_CONTEXT~ to fly to Los Santos or ~INPUT_CONTEXT_SECONDARY~ to North Yankton for $350.");
-					if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52))
+					worldtravel::HelpText::DisplayHelpText("Press ~INPUT_CONTEXT~ to fly to LS, ~INPUT_CONTEXT_SECONDARY~ to NY or ~INPUT_JUMP~ to VC for $350.");
+					if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 22))
 					{
 						int destination = 1;
 						if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51))
@@ -1837,6 +1886,10 @@ namespace levelSwitch
 						else if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52))
 						{
 							destination = 2;
+						}
+						else if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 22))
+						{
+							destination = 3;
 						}
 						CAM::DO_SCREEN_FADE_OUT(800);
 						WAIT(800);
@@ -1862,6 +1915,8 @@ namespace levelSwitch
 							loadSantos();
 						else if (destination == 2)
 							loadYankton();
+						else if (destination == 3)
+							loadCayo();
 						CUTSCENE::REMOVE_CUTSCENE();
 						CAM::DO_SCREEN_FADE_OUT(0);
 						unloadLiberty();
@@ -1886,6 +1941,11 @@ namespace levelSwitch
 							AI::TASK_WARP_PED_INTO_VEHICLE(playerPed, yanktonVehicle, -1);
 							STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(yanktonVehicleHash);
 						}
+						else if (destination == 3)
+						{
+							ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, -4859, -3433, 14.85, 0, 0, 1);
+							ENTITY::SET_ENTITY_HEADING(playerPed, 22.8f);
+						}
 						CAM::SET_GAMEPLAY_CAM_RELATIVE_HEADING(0.0f);
 						CAM::SET_GAMEPLAY_CAM_RELATIVE_PITCH(0.0f, 0.0f);
 
@@ -1895,6 +1955,8 @@ namespace levelSwitch
 								TIME::ADD_TO_CLOCK_TIME(3, 0, 0);
 							else if (destination == 2)
 								TIME::ADD_TO_CLOCK_TIME(7, 0, 0);
+							else if (destination == 3)
+								TIME::ADD_TO_CLOCK_TIME(3, 0, 0);
 						}
 						else
 						{
@@ -1951,8 +2013,8 @@ namespace levelSwitch
 		{
 			if (PLAYER::GET_PLAYER_WANTED_LEVEL(playerPed) == 0)
 			{
-				worldtravel::HelpText::DisplayHelpText("Press ~INPUT_CONTEXT~ to fly to Los Santos or ~INPUT_CONTEXT_SECONDARY~ to Liberty City for $350.");
-				if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52))
+				worldtravel::HelpText::DisplayHelpText("Press ~INPUT_CONTEXT~ to fly to LS, ~INPUT_CONTEXT_SECONDARY~ to LC, or ~INPUT_JUMP~ VC for $350.");
+				if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 22))
 				{
 					int destination = 2;
 					if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51))
@@ -1962,6 +2024,10 @@ namespace levelSwitch
 					else if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52))
 					{
 						destination = 1;
+					}
+					else if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 22))
+					{
+						destination = 3;
 					}
 					CAM::DO_SCREEN_FADE_OUT(800);
 					WAIT(800);
@@ -1985,6 +2051,11 @@ namespace levelSwitch
 						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(player, FlyToLSFromLCCoords[0] + 1500.00f, FlyToLSFromLCCoords[1] + 1500.00f, FlyToLSFromLCCoords[2] + 1500.00f, 0, 0, 1);
 						loadLiberty();
 					}
+					else if (destination == 3)
+					{
+						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(player, CayoPericoAirport[0] + 1500.00f, CayoPericoAirport[1] + 1500.00f, CayoPericoAirport[2] + 1500.00f, 0, 0, 1);
+						loadCayo();
+					}
 					if (destination == 0)
 					{
 						CAM::DO_SCREEN_FADE_OUT(0);
@@ -1996,6 +2067,11 @@ namespace levelSwitch
 						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, FrancisIntAirportArrival[0], FrancisIntAirportArrival[1], FrancisIntAirportArrival[2], 0, 0, 1);
 						ENTITY::SET_ENTITY_HEADING(playerPed, 97.4f);
 					}
+					else if (destination == 3)
+					{
+						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, -4859, -3433, 14.85, 0, 0, 1);
+						ENTITY::SET_ENTITY_HEADING(playerPed, 22.8f);
+					}
 					CAM::SET_GAMEPLAY_CAM_RELATIVE_HEADING(0.0f);
 					CAM::SET_GAMEPLAY_CAM_RELATIVE_PITCH(0.0f, 0.0f);
 
@@ -2005,6 +2081,8 @@ namespace levelSwitch
 							TIME::ADD_TO_CLOCK_TIME(7, 0, 0);
 						else if (destination == 1)
 							TIME::ADD_TO_CLOCK_TIME(9, 0, 0);
+						else if (destination == 3)
+							TIME::ADD_TO_CLOCK_TIME(6, 0, 0);
 					}
 					else
 					{
@@ -2015,6 +2093,164 @@ namespace levelSwitch
 						}
 					}
 					unloadYankton();
+					if (NETWORK::NETWORK_IS_IN_SESSION())
+					{
+						NETWORK::NETWORK_SET_IN_MP_CUTSCENE(true, true);
+					}
+					if (destination == 0)
+					{
+						CUTSCENE::REQUEST_CUTSCENE_WITH_PLAYBACK_LIST((char*)"hs4_lsa_land_nimb", 1, 24);
+						CUTSCENE::SET_CUTSCENE_PED_COMPONENT_VARIATION_FROM_PED("MP_1", playerPed, 0);
+						CUTSCENE::REGISTER_ENTITY_FOR_CUTSCENE(playerPed, "MP_1", 0, 0, 64);
+						CUTSCENE::SET_CUTSCENE_FADE_VALUES(true, true, true, true);
+						CUTSCENE::START_CUTSCENE(0);
+						while (CUTSCENE::IS_CUTSCENE_ACTIVE())
+						{
+							WAIT(0);
+						}
+						CUTSCENE::STOP_CUTSCENE_IMMEDIATELY();
+						CUTSCENE::REMOVE_CUTSCENE();
+						if (NETWORK::NETWORK_IS_IN_SESSION())
+						{
+							NETWORK::NETWORK_SET_IN_MP_CUTSCENE(false, false);
+						}
+					}
+					if (destination == 1)
+					{
+						CUTSCENE::REQUEST_CUTSCENE_WITH_PLAYBACK_LIST((char*)"lc_lca_land_nimb", 1, 24);
+						CUTSCENE::SET_CUTSCENE_PED_COMPONENT_VARIATION_FROM_PED("MP_1", playerPed, 0);
+						CUTSCENE::REGISTER_ENTITY_FOR_CUTSCENE(playerPed, "MP_1", 0, 0, 64);
+						CUTSCENE::SET_CUTSCENE_FADE_VALUES(true, true, true, true);
+						CUTSCENE::START_CUTSCENE(0);
+						CAM::DO_SCREEN_FADE_IN(250);
+						while (CUTSCENE::IS_CUTSCENE_ACTIVE())
+						{
+							WAIT(0);
+						}
+						CUTSCENE::STOP_CUTSCENE_IMMEDIATELY();
+						CUTSCENE::REMOVE_CUTSCENE();
+					}
+					if (NETWORK::NETWORK_IS_IN_SESSION())
+					{
+						NETWORK::NETWORK_SET_IN_MP_CUTSCENE(false, false);
+					}
+					CAM::DO_SCREEN_FADE_OUT(0);
+					ENTITY::FREEZE_ENTITY_POSITION(playerPed, false);
+					if (destination == 0)
+						ENTITY::SET_ENTITY_HEADING(playerPed, 341.24f);
+					else if (destination == 1)
+						ENTITY::SET_ENTITY_HEADING(playerPed, 97.4f);
+					PLAYER::SET_MAX_WANTED_LEVEL(maxWanted);
+					worldtravel::SetPlayerLocationID(destination);
+					CAM::DO_SCREEN_FADE_IN(800);
+				}
+			}
+			else
+			{
+				worldtravel::HelpText::DisplayHelpText("You cannot buy a plane ticket while wanted by the cops!");
+			}
+		}
+	}
+
+	//airport travel from Vice City
+	void AirportTravelVC()
+	{
+		if (!ENTITY::IS_ENTITY_DEAD(playerPed) &&
+			(!ENTITY::IS_ENTITY_IN_AREA(playerPed, -10000.0f, -10000.0f, -10000.0f, 10000.0f, 10000.0f, 10000.0f, false, false, false) &&//CHANGETHESE
+				!ENTITY::IS_ENTITY_IN_AREA(playerPed, -4862.0f, -3435.0f, -10000.0f, -4858.0f, -3431.0f, 10000.0f, false, false, false) &&
+				!ENTITY::IS_ENTITY_IN_AREA(playerPed, -4862.0f, -3435.0f, -10000.0f, -4858.0f, -3431.0f, 10000.0f, false, false, false)))
+		{
+			if (PLAYER::GET_PLAYER_WANTED_LEVEL(playerPed) == 0)
+			{
+				worldtravel::HelpText::DisplayHelpText("Press ~INPUT_CONTEXT~ to fly to LS, ~INPUT_CONTEXT_SECONDARY~ to LC, or ~INPUT_JUMP~ NY for $350.");
+				if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 22))
+				{
+					int destination = 2;
+					if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 51))
+					{
+						destination = 0;
+					}
+					else if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 52))
+					{
+						destination = 1;
+					}
+					else if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(2, 22))//dest3 is now NY
+					{
+						destination = 3;
+					}
+					CAM::DO_SCREEN_FADE_OUT(800);
+					WAIT(800);
+					worldtravel::SetPlayerLocationID(-1);
+					int maxWanted = PLAYER::GET_MAX_WANTED_LEVEL();
+					PLAYER::SET_MAX_WANTED_LEVEL(0);
+					ENTITY::FREEZE_ENTITY_POSITION(playerPed, true);
+					if (PED::IS_PED_IN_ANY_VEHICLE(player, 0))
+					{
+						playerVehicle = PED::GET_VEHICLE_PED_IS_USING(player);
+						ENTITY::SET_ENTITY_AS_MISSION_ENTITY(playerVehicle, true, true);
+						VEHICLE::DELETE_VEHICLE(&playerVehicle);
+					}
+					if (destination == 0)
+					{
+						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(player, FlyToLCFromLSCoords[0] - 1500.00f, FlyToLCFromLSCoords[1] - 1500.00f, FlyToLCFromLSCoords[2] + 1500.00f, 0, 0, 1);
+						loadSantos();
+					}
+					else if (destination == 1)
+					{
+						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(player, FlyToLSFromLCCoords[0] + 1500.00f, FlyToLSFromLCCoords[1] + 1500.00f, FlyToLSFromLCCoords[2] + 1500.00f, 0, 0, 1);
+						loadLiberty();
+					}
+					else if (destination == 3)
+					{
+						loadYankton();
+					}
+					if (destination == 0)
+					{
+						CAM::DO_SCREEN_FADE_OUT(0);
+						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, LosSantosIntAirportArrival[0], LosSantosIntAirportArrival[1], LosSantosIntAirportArrival[2], 0, 0, 1);
+						ENTITY::SET_ENTITY_HEADING(playerPed, 341.24f);
+					}
+					else if (destination == 1)
+					{
+						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, FrancisIntAirportArrival[0], FrancisIntAirportArrival[1], FrancisIntAirportArrival[2], 0, 0, 1);
+						ENTITY::SET_ENTITY_HEADING(playerPed, 97.4f);
+					}
+					else if (destination == 3)
+					{
+						ENTITY::FREEZE_ENTITY_POSITION(playerPed, false);
+						ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, NorthYanktonAirportArrival[0], NorthYanktonAirportArrival[1], NorthYanktonAirportArrival[2], 0, 0, 1);
+						yanktonVehicleHash = GAMEPLAY::GET_HASH_KEY("asea2");
+						ENTITY::SET_ENTITY_HEADING(playerPed, 86.0f);
+						STREAMING::REQUEST_MODEL(yanktonVehicleHash);
+						while (!STREAMING::HAS_MODEL_LOADED(yanktonVehicleHash))
+						{
+							WAIT(0);
+						}
+						yanktonVehicle = VEHICLE::CREATE_VEHICLE(yanktonVehicleHash, NorthYanktonAirportArrival[0], NorthYanktonAirportArrival[1], NorthYanktonAirportArrival[2], 86.0f, true, true, false);
+						AI::TASK_WARP_PED_INTO_VEHICLE(playerPed, yanktonVehicle, -1);
+						STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(yanktonVehicleHash);
+					}
+					CAM::SET_GAMEPLAY_CAM_RELATIVE_HEADING(0.0f);
+					CAM::SET_GAMEPLAY_CAM_RELATIVE_PITCH(0.0f, 0.0f);
+
+					if (!NETWORK::NETWORK_IS_IN_SESSION())
+					{
+						if (destination == 0)
+							TIME::ADD_TO_CLOCK_TIME(7, 0, 0);
+						else if (destination == 1)
+							TIME::ADD_TO_CLOCK_TIME(9, 0, 0);
+						else if (destination == 3)
+							TIME::ADD_TO_CLOCK_TIME(6, 0, 0);
+					}
+					else
+					{
+						if (destination == 0)
+						{
+							NetworkClockController(false);
+							NETWORK::NETWORK_CLEAR_CLOCK_TIME_OVERRIDE();
+						}
+					}
+					unloadCayo();
 					if (NETWORK::NETWORK_IS_IN_SESSION())
 					{
 						NETWORK::NETWORK_SET_IN_MP_CUTSCENE(true, true);
@@ -2087,6 +2323,10 @@ namespace levelSwitch
 		if (worldtravel::IsNorthYankton())
 		{
 			AirportTravelNY();
+		}
+		if (worldtravel::IsCayoPerico())
+		{
+			AirportTravelVC();
 		}
 	}
 
@@ -2438,10 +2678,15 @@ namespace levelSwitch
 		KeepLosSantosIplsDisabled();
 		CreateBlips();
 		
-		if (Settings::RememberMap && !hasLoadedRememberedMap)
+		if (Settings::RememberMap && !hasLoadFunctionStarted)
 		{
+			hasLoadFunctionStarted = true;
 			if (worldtravel::GetPlayerLocationID() != Settings::LastLocation) {
-				WAIT(8000);//if this delay isnt here, the game wont load
+				if (Settings::LastLocation == 2)
+				{
+					WAIT(4000);//EAI FIX
+				}
+				WAIT(4000);//if this delay isnt here, the game wont load
 				SwitchMap(worldtravel::GetPlayerLocationID(), Settings::LastLocation);//load whatever the last area was according to config
 				if (!Settings::IHaveAPersistenceMod) {//teleport the player to the relevant map if they dont have a mod that remembers location
 					if (Settings::LastLocation == 1)
